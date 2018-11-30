@@ -187,8 +187,7 @@ public class graphScreen extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 // Data Mocker Functionality
-                manager.updateData("I like candy");
-
+                manager.setMocking(true);
 
             }
         });
@@ -197,7 +196,7 @@ public class graphScreen extends AppCompatActivity {
         builder.setPositiveButton("On a leash\n(USB)", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-
+                manager.setMocking(false);
                 setConnected(USB);
 
                 unregisterReceiver(sensorReceiver);
@@ -211,6 +210,7 @@ public class graphScreen extends AppCompatActivity {
         builder.setNegativeButton("Unleashed\n(Bluetooth)", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
+                manager.setMocking(false);
                 device_connection = BLUETOOTH;
                 bt_established=false;
                 unregisterReceiver(sensorReceiver);

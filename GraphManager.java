@@ -40,7 +40,8 @@ public class GraphManager implements Runnable
     private TextView finalbutton;
     private TextView warnDisplay;
     private String warnString;
-    private Boolean runningTest = false;
+    private Boolean mockingData = false;
+    private float[] mockedData = new float[5];
     private long startTime;
     private long lastruntime;
     private long nowruntime;
@@ -127,46 +128,19 @@ public class GraphManager implements Runnable
 
         // GET INSTRUMENT
         data = this.getData();
-        if(data == null){
-            Log.e("Data was ", "null");
-        }else{
-            Log.e("Data is me, bitch: ", this.getData());
-        }
 
 
-
-
-        while (data == null){     // Wait for the first data to arrive to get instrument
+        while (data == null && !mockingData){     // Wait for the first data to arrive to get instrument
             try {
                 Thread.sleep(SLEEP_TIME);
             } catch (Exception exception) {}
 
-            if(this.getData() == null){
-                Log.e("Data: ", "Most assuredly null");
-            }else{
-                Log.e("Data was not null", "So annoying");
-                Log.e("Data: ", this.getData());
-            }
-
-
-            if(this.getData() == "I like candy"){
-                this.runningTest = true;
-                Log.e("Set runningTest to", "true");
-
-
-            }
-
-            if(this.runningTest){
-                data = this.mockData();
-            }else{
-                data = this.getData();
-            }
+            data = this.getData();
 
         }
 
-        Log.e("Mocked data?", data);
 
-        if(!runningTest){
+        if(!mockingData){
             // In case the instrument is just connected, there might be some gibberish in the data buffer... we drop the first string and use the second one to identify instrument (and fields in future versions)
             while (!(data.substring(0,1).equals("<"))){     // Wait for the first data to arrive to get instrument
                 try { Thread.sleep(SLEEP_TIME);
@@ -179,10 +153,17 @@ public class GraphManager implements Runnable
         }
 
 
-        try { instrument = data.substring(data.lastIndexOf('/') + 1).toUpperCase(); // Use the last element in datastring, not the first
-              instrument = instrument.substring(0, instrument.length() - 1); // seems to be more stable if incomplete strings are received.
+        try {
+            instrument = data.substring(data.lastIndexOf('/') + 1).toUpperCase(); // Use the last element in datastring, not the first
+            instrument = instrument.substring(0, instrument.length() - 1); // seems to be more stable if incomplete strings are received.
         } catch (Exception exception) {
-            instrument="unknown";}
+            if(mockingData){
+                instrument = "Test Leash";
+            }else{
+                instrument="unknown";
+            }
+
+        }
         activity.runOnUiThread(new Runnable() {
             public void run() {
         instrumentDisplay.setText(instrument);
@@ -194,12 +175,11 @@ public class GraphManager implements Runnable
         // Loops until the screen is deconstructed
         while (running)
         {
-            if(runningTest){
-                Log.e("Still running", "test");
+            if(mockingData){
                 try{
                     TimeUnit.MILLISECONDS.sleep(500);
                     newDataAvailable = true;
-                    Log.e("newDataAvailable", "true");
+
                 }catch (Exception e){
                     Log.w("Couldn't sleep", e);
                 }
@@ -209,13 +189,7 @@ public class GraphManager implements Runnable
 
 
                 // Get the latest data from the instrument
-                if(runningTest){
-                    data = this.mockData();
-                }else{
-                    data = this.getData();
-                }
-                Log.e("Got here", "Line 217");
-
+                data = this.getData();
 
                 // Get the current time
                 time = new Date();
@@ -456,18 +430,127 @@ public class GraphManager implements Runnable
     /*
      *  Simple getter function. Returns the last full line received from the serial reader.
      */
-    private String getData()
-    {
+    private String getData() {
         return lastData;
     }
 
-    private String mockData()
-    {
-        // TODO: Find a good place to set 'newDataAvailable' to true
-        dataMocker mocker = new dataMocker();
-        String mockedData = mocker.generateXML();
+    private float[] mockData() {
         this.newDataAvailable = false;
-        return mockedData;
+
+        float[] output;
+
+        // Initialize the array which will
+        output = new float[5];
+
+        Arrays.fill(output, 0.0f);
+
+        if(Arrays.equals(mockedData, output)){
+
+            // CO2
+            // Average globally is 405.0 ppm in 2017
+            output[0] = 405.0f;
+
+            // H20
+            // TODO: Set the base/start to reasonable measurements for humidity
+            output[1] = 10000f;
+
+            // Device Temperature
+            // NOT Atmospheric temperature: Must be at least 50c to be considered ready for measurement
+            output[2] = 60.0f;
+
+            // Pressure
+            // Standard atmospheric pressure is 101.325 kPa
+            output[3] = 101.325f;
+
+            // Voltage
+            // Value of less than 10.6 will trigger a low voltage warning
+            output[4] = 13.0f;
+
+            mockedData = output;
+            newDataAvailable = false;
+
+            return output;
+
+        }else{
+            // Ideally you would want to slowly adjust the data points on the graph instead
+            // of randomly generating them each time.
+            // For now each number is generated with a set range.
+            float max, min, modifier;
+            Random r = new Random();
+
+            // CO2
+            // Average globally is 405.0 ppm in 2017
+            min = 50.0f;
+            max = 150.0f;
+            modifier= min + r.nextFloat() * (max - min);
+            if(r.nextBoolean()){
+                output[0] = mockedData[0] + modifier;
+            }else{
+                output[0] = mockedData[0] - modifier;
+            }
+
+
+            // H20
+            // TODO: Set the min/max to reasonable measurements for humidity
+            min = 500;
+            max = 5000;
+            modifier= min + r.nextFloat() * (max - min);
+            if(r.nextBoolean()){
+                output[1] = mockedData[1] + modifier;
+            }else{
+                output[1] = mockedData[1] - modifier;
+            }
+
+            // Device Temperature
+            // NOT Atmospheric temperature: Must be at least 50c to be considered ready for measurement
+            min = 0.1f;
+            max = 9.0f;
+            modifier= min + r.nextFloat() * (max - min);
+            if(r.nextBoolean()){
+                output[2] = mockedData[2] + modifier;
+            }else{
+                output[2] = mockedData[2] - modifier;
+            }
+
+            // Pressure
+            // Standard atmospheric pressure is 101.325 kPa
+            min = 0.5f;
+            max = 65.0f;
+            modifier= min + r.nextFloat() * (max - min);
+            if(r.nextBoolean()){
+                output[3] = mockedData[3] + modifier;
+            }else{
+                output[3] = mockedData[3] - modifier;
+            }
+
+            // Voltage
+            // Value of less than 10.6 will trigger a low voltage warning
+            min = 0.1f;
+            max = 1.5f;
+            modifier= min + r.nextFloat() * (max - min);
+            if(r.nextBoolean()){
+                output[4] = mockedData[4] + modifier;
+            }else{
+                output[4] = mockedData[4] - modifier;
+            }
+
+            // TODO: Should be able to use this var to slowly adjust the measurements up and down.
+            // mockedData = output;
+            newDataAvailable = false;
+            return output;
+
+        }
+
+    }
+
+    void setMocking(Boolean key){
+        try {
+            lastData = key.toString();
+            mockingData = key;
+            mockedData = new float[5];
+        }catch (Exception error){
+            Log.e("Invalid mocking state", error.getMessage());
+        }
 
     }
 
@@ -487,10 +570,10 @@ public class GraphManager implements Runnable
         // If the data point is invalid, do not add it to the data array or graphs
         if (newSeries.co2 == 0 || newSeries.h2o == 0 || newSeries.temp == 0 || newSeries.pres == 0)
         {
-            Log.e("Data point was", "invalid");
+            Log.w("Data point was", "invalid");
             return;
         }
-        Log.e("Data point was", "Successful");
+        Log.v("Data point was", "Successful");
 
         // Add the new data series to the array of all data series
         if (logging)
@@ -515,15 +598,24 @@ public class GraphManager implements Runnable
                 h2oDisplay.setText(String.format("%.3f ppt", newSeries.h2o));
                 tempDisplay.setText(String.format("%.1f °C", newSeries.temp));
                 presDisplay.setText(String.format("%.1f kPa", newSeries.pres));
+
                 // WARNING when instrument is still warming up or Battery Low
                 if (newSeries.temp < 50.0 | newSeries.volt < 10.6) {
                     warnString="";
                     warnDisplay.setVisibility(View.VISIBLE);
-                    if (newSeries.temp < 50.0) { warnString+=instrument + ": warming up, please wait"; }
-                    if (newSeries.temp < 50.0 & newSeries.volt < 10.6) {warnString+='\n'; }
-                    if (newSeries.volt < 10.6) { warnString+= String.format("%s: low Battery warning (%.1f V)",instrument, newSeries.volt); }
+                    if (newSeries.temp < 50.0) {
+                        warnString+=instrument + ": warming up, please wait";
+                    }
+                    if (newSeries.temp < 50.0 & newSeries.volt < 10.6) {
+                        warnString+='\n';
+                    }
+                    if (newSeries.volt < 10.6){
+                        warnString+= String.format("%s: low Battery warning (%.1f V)",instrument, newSeries.volt);
+                    }
                     warnDisplay.setText(warnString);
-                }else {warnDisplay.setText("");warnDisplay.setVisibility(View.GONE);}
+                }else {
+                    warnDisplay.setText("");warnDisplay.setVisibility(View.GONE);
+                }
 
             }
         });
@@ -569,8 +661,14 @@ public class GraphManager implements Runnable
 
             float[] parse;
 
-            // Get an array of all the parsed values from the data
-            parse = parseData(data);
+            // If the data mocker is running, then use randomized data
+            if (mockingData) {
+                parse = mockData();
+            }else{
+                // Get an array of all the parsed values from the data
+                parse = parseData(data);
+            }
+
 
 
 
@@ -614,36 +712,9 @@ public class GraphManager implements Runnable
             // Initialize our array which will hold all the parsed values
             output = new float[5];
 
-            if(runningTest){
-                int max = 0, min = 0;
-                Random r = new Random();
-
-                min = 1;
-                max = 15;
-                output[0] = min + r.nextFloat() * (max - min);
-
-                min = 1;
-                max = 20;
-                output[1] = min + r.nextFloat() * (max - min);
-
-                min = 1;
-                max = 30;
-                output[2] = min + r.nextFloat() * (max - min);
-
-                min = 52;
-                max = 65;
-                output[3] = min + r.nextFloat() * (max - min);
-
-                min = 12;
-                max = 15;
-                output[4] = min + r.nextFloat() * (max - min);
-                return output;
-            }
-
             // Try to parse out the CO2
             try
             {
-                Log.e("<co2>", data.split("<co2>")[1].split("</co2>")[0]);
                 output[0] = stringToFloat(data.split("<co2>")[1].split("</co2>")[0]);
             }
             catch(Exception exception)
