@@ -480,7 +480,7 @@ public class GraphManager implements Runnable
 
             // CO2
             // Average globally is 405.0 ppm in 2017
-            min = 50.0f;
+            min = 1.0f;
             max = 150.0f;
             modifier= min + r.nextFloat() * (max - min);
             if(r.nextBoolean()){
@@ -492,7 +492,7 @@ public class GraphManager implements Runnable
 
             // H20
             // TODO: Set the min/max to reasonable measurements for humidity
-            min = 500;
+            min = 50;
             max = 5000;
             modifier= min + r.nextFloat() * (max - min);
             if(r.nextBoolean()){
